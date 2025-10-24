@@ -1,0 +1,10 @@
+﻿# Ignore large or generated files
+data/raw/
+data/interim/
+data/processed/
+.ipynb_checkpoints/
+*.parquet
+*.csv
+*.gz
+*.zip
+*.log
