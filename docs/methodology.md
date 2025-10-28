@@ -18,11 +18,3 @@
 | yellow_tripdata_2024-12.parquet |     61.52 |
 
 Total files: 12 | Combined size: 693.0 MB
-
-## NOAA Weather Data Ingestion Plan
-Stations selected: KJFK (JFK Airport), KLGA (LaGuardia), KNYC (Central Park), KEWR (Newark), KTEB (Teterboro).
-
-Hourly aggregation will produce a single city-wide dataset saved as:
-`/data/interim/noaa_hourly_citywide_2024.parquet`.
-
-Aggregation metrics follow the approved schema (mean / sum / mode per hour).

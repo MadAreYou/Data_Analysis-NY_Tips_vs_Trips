@@ -53,6 +53,11 @@ pip install -r requirements.txt
   - X (Parquet): `X:\data\processed\nyc_2024_trips_weather.parquet`
   - X (Sample CSV): `X:\data\processed\nyc_2024_trips_weather_sample.csv`
 
+### Authoritative handoff (preprocessed)
+
+- Local (Parquet): `data/processed/nyc_2024_trips_weather_preprocessed.parquet`
+- X (Parquet): `X:\data\processed\nyc_2024_trips_weather_preprocessed.parquet`
+
 ## How to reproduce key steps
 
 - Open `notebooks/01_ingest_explore.ipynb` and run the sections in order:
@@ -67,6 +72,43 @@ Notes:
 - All writes are performed locally first, then copied to X: with retries for network stability.
 - The join key is NYC local hour (`pickup_hour_local`).
 
+## Preprocessing and QC status (Notebooks 02 and 03)
+
+### Notebook 02 — Clean & Normalize (source of truth)
+
+- Missing values
+  - Numeric-only median imputation; non-numeric handled later (e.g., `weather_code` → `"UNKNOWN"`).
+- Outliers
+  - IQR preview followed by refined caps at p99.9 with pragmatic ceilings; monetary fields floored at 0.
+- Feature engineering
+  - `tip_percent_raw` (0–100, clipped), `tip_percent_z` (standardized), `fare_per_km`.
+  - Time features when timestamps present: `duration_min`, `pickup_hour`, `dow` (0=Mon), `month`, `season`.
+- Encoding & scaling
+  - `payment_type` one-hot with `drop_first=True`.
+  - Standardize selected continuous features for modeling; fee/surcharge components may remain in original units for interpretability.
+- Export integrity
+  - Export QC Gate (idempotent fills + strict numeric NA check) and an RQ-fields QC check.
+  - Final save locally, copy to X:, then post-copy verification (re-open X: parquet and re-check completeness).
+
+Outcome: produces the authoritative preprocessed parquet consumed by downstream notebooks.
+
+### Notebook 03 — QC & validation (read-only)
+
+- Loads from X: authoritative parquet and performs:
+  - Null audit (expected: none), summary stats, correlation heatmap, pairplot.
+  - Tip distribution plots use `tip_percent_raw` when available; fallback to z-score with adjusted labels.
+  - RQ readiness check (column presence only) → PASS for RQ1, RQ2, RQ3.
+- Notes
+  - Pearson correlations are scale-invariant; standardization doesn’t change coefficients (it helps downstream methods).
+
+Status: dataset is complete and validated; ready for analysis in Notebook 04.
+
+### Run order for preprocessing/QC
+
+1. `notebooks/02_clean_normalize.ipynb` — Run top→bottom through: missing-value handling; outlier caps; feature engineering; “Minimal derived features for Research Questions” (adds tip_percent_raw, temporal fields); Export QC Gate(s); Final Save → Copy to X: → Post-copy verification.
+
+2. `notebooks/03_qc_validation.ipynb` — Load from X:, run QC steps 2–6 and the final “RQ readiness check”. Expected: tip plots on raw % (0–60% focus) and overall RQ readiness = READY.
+
 ## Validation summary (high level)
 
 - TLC × NOAA merged rows: 41,169,720
@@ -75,4 +117,9 @@ Notes:
 
 ## Next steps
 
-- Begin downstream analysis in notebooks under Section D (Advanced Analysis) using the merged parquet on X:.
+- Begin downstream analysis in Notebook 04 (EDA & export) to answer the research questions:
+  - RQ1: distance/duration and spatial patterns vs. tip_amount and tip_percent_raw (binning + heatmaps).
+  - RQ2: temporal effects (hour × day-of-week heatmap; monthly/seasonal trends).
+  - RQ3: fare components’ association with tip_amount, controlled within distance/duration bins.
+
+Changelog (dev): latest commit updates Notebooks 02/03 to add RQ features, export QC, corrected plots/markdown, and README status.
