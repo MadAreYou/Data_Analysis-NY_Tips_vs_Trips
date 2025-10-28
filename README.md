@@ -6,13 +6,16 @@ Sections: **C  Data Preparation** and **D  Advanced Analysis**
 
 ## Overview
 
-This repository prepares and validates a joined dataset of NYC Yellow Taxi trips (2024) with hourly NYC weather (NOAA 2024). The processing is implemented in notebooks, with outputs published both locally (repo `data/`) and to an external X: drive for downstream analysis.
+This repository delivers an end‑to‑end analysis of tipping behavior using a joined dataset of NYC Yellow Taxi trips (2024) and hourly NYC weather (NOAA 2024). The workflow is implemented in four notebooks that: ingest and join data, clean/normalize, run QC, and perform EDA aligned to the three research questions (RQ1–RQ3). The final notebook saves report‑ready figures, tables, and markdown blocks.
 
 ## Repository Layout
 
-- /data – raw, interim, processed datasets  
-- /notebooks – stepwise Jupyter notebooks  
-- /docs – methodology, data dictionary, and decisions  
+- `data/` – raw, interim, processed datasets  
+- `notebooks/` – stepwise Jupyter notebooks (01–04)  
+- `docs/` – methodology, data dictionary, decisions, figures/tables, report blocks  
+  - `docs/figures/` – PNGs exported from notebook 04  
+  - `docs/tables/` – CSV tables exported from notebook 04  
+  - `docs/report_blocks/` – copy‑paste markdown summaries (RQ1–RQ3, executive)
 
 ## Branches
 
@@ -33,13 +36,15 @@ pip install -r requirements.txt
 - TLC Trip Data 2024 (Parquet): [TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) (CloudFront mirror used by notebook)
 - NOAA LCD 2024 (CSV): [NOAA LCD Access 2024](https://www.ncei.noaa.gov/data/local-climatological-data/access/2024/)
 
-## What’s completed so far
+## What’s completed
 
 1. Downloaded TLC 2024 monthly Parquet files to X:.
 2. Downloaded NOAA station CSVs (JFK, LGA, Central Park, Newark, Teterboro) and aggregated to city‑wide hourly metrics in NYC local time.
-3. Validated NOAA aggregation (schema, coverage, recomputation parity, size efficiency).
-4. Merged TLC trips with hourly weather on NYC local pickup hour (Step 6.3).
-5. Added merge validations: parquet metadata parity, hour sampling, invariants, and an hour‑level report confirming numeric weather columns equal NOAA (on overlapping hours).
+3. Validated NOAA aggregation (schema, coverage, parity, and size efficiency).
+4. Merged TLC trips with hourly weather on NYC local pickup hour with strict validations.
+5. Cleaned/normalized the merged dataset; added derived features for analysis (tip_percent_raw, duration_min, temporal fields, etc.).
+6. QC’d the authoritative parquet (null audit, stats, correlations, RQ readiness = PASS).
+7. EDA aligned to RQ1–RQ3; exported figures, tables, and report‑ready markdown blocks.
 
 ## Resulting datasets (ready for further work)
 
@@ -58,19 +63,17 @@ pip install -r requirements.txt
 - Local (Parquet): `data/processed/nyc_2024_trips_weather_preprocessed.parquet`
 - X (Parquet): `X:\data\processed\nyc_2024_trips_weather_preprocessed.parquet`
 
-## How to reproduce key steps
+## How to reproduce (01 → 04)
 
-- Open `notebooks/01_ingest_explore.ipynb` and run the sections in order:
-  - TLC 2024 data collection → downloads monthly files to X:
-  - NOAA Weather Data → downloads station CSVs and writes aggregated city‑hour parquet (local → copy to X:)
-  - Data validation → validates the NOAA parquet
-  - Merge & Export → merges TLC with hourly weather, writes outputs (local → copy to X:)
-  - Validation (end) → verifies the merged dataset and produces an hour‑level comparison report vs NOAA
+- 01 — `notebooks/01_ingest_explore.ipynb`: Download TLC 2024 (Parquet) and NOAA station CSVs; aggregate NOAA to NYC hourly (local → copy to X:); validate NOAA parquet and join keys.
+- 02 — `notebooks/02_clean_normalize.ipynb`: Handle missing values and outliers; engineer features (tip% and time); run export QC gates; save authoritative preprocessed parquet (local + X:) with post‑copy verification.
+- 03 — `notebooks/03_qc_validation.ipynb`: Read authoritative parquet from X:, run QC and confirm RQ readiness (PASS expected).
+- 04 — `notebooks/04_eda_export.ipynb`: Answer RQ1–RQ3 with aggregation‑first analysis; export figures/tables and report markdown blocks.
 
-Notes:
+Notes
 
-- All writes are performed locally first, then copied to X: with retries for network stability.
-- The join key is NYC local hour (`pickup_hour_local`).
+- Writes happen locally first, then copy to X: with retries.  
+- Key join is NYC local hour (`pickup_hour_local`).
 
 ## Preprocessing and QC status (Notebooks 02 and 03)
 
@@ -109,17 +112,61 @@ Status: dataset is complete and validated; ready for analysis in Notebook 04.
 
 2. `notebooks/03_qc_validation.ipynb` — Load from X:, run QC steps 2–6 and the final “RQ readiness check”. Expected: tip plots on raw % (0–60% focus) and overall RQ readiness = READY.
 
+## Analysis (Notebook 04) — EDA & Export
+
+Notebook: `notebooks/04_eda_export.ipynb`
+
+Purpose: answer RQ1–RQ3 using aggregation-first methods, save figures/tables, and generate report-ready summaries.
+
+What it does
+
+- Loads the authoritative preprocessed parquet (from X: with local fallback).
+- RQ1: distance × duration binning (medians + counts), heatmap; spatial top/bottom pickup/drop-off areas.
+- RQ2: temporal patterns (by hour, day-of-week, month/season), hour×DOW heatmap; selected weather bins.
+- RQ3: within-bin (distance×duration) comparisons for fee flags (tolls, congestion, airport) and their median deltas.
+- Each RQ shows styled tables in-notebook and a concise narrative answer directly beneath the technical outputs.
+
+Artifacts
+
+- Figures: `docs/figures/*.png` (e.g., `rq1_heatmap_tip_percent.png`, `rq2_hour_tip_pct.png`, `rq3_withinbin_deltas.png`).
+- Tables: `docs/tables/*.csv` for key aggregations per RQ.
+- Report blocks (auto-generated markdown): `docs/report_blocks/`
+  - `rq1_summary.md`, `rq2_summary.md`, `rq3_summary.md`, and `executive_summary.md`.
+
+How to run
+
+1. Ensure dependencies are installed (see Environment).
+2. Open `notebooks/04_eda_export.ipynb` and run all cells top→bottom.
+3. On completion, review figures/tables in `docs/figures` and `docs/tables` and the markdown summaries in `docs/report_blocks` for copy-paste into reports.
+
+Notes
+
+- Medians are used for robustness; counts (n) are included to gauge reliability.
+- Results are observational; interpret deltas as associations, not causal effects.
+
 ## Validation summary (high level)
 
 - TLC × NOAA merged rows: 41,169,720
 - Numeric weather columns match NOAA per hour across intersecting hours (share_equal = 1.0; max abs diffs at floating‑point noise).
 - Invariants hold: rows without matching weather hour have all weather columns null; matched rows have weather populated where available.
 
-## Next steps
+## Research questions and findings (executive story)
 
-- Begin downstream analysis in Notebook 04 (EDA & export) to answer the research questions:
-  - RQ1: distance/duration and spatial patterns vs. tip_amount and tip_percent_raw (binning + heatmaps).
-  - RQ2: temporal effects (hour × day-of-week heatmap; monthly/seasonal trends).
-  - RQ3: fare components’ association with tip_amount, controlled within distance/duration bins.
+- RQ1 — Trip spatial and time patterns: Longer or slower trips tend to earn higher tips. Short, quick hops earn less. Where a trip starts and ends also matters: airport‑ and nightlife‑adjacent areas skew higher, while some commuter zones skew lower.
 
-Changelog (dev): latest commit updates Notebooks 02/03 to add RQ features, export QC, corrected plots/markdown, and README status.
+- RQ2 — Temporal factors: Tipping follows a daily rhythm—early‑morning hours perform best, the evening commute is softer. Weekends are generally more generous than weekdays, and fall edges out winter. Weather matters but its signal is smaller than everyday timing patterns.
+
+- RQ3 — Fare components within similar trips: Even comparing like‑for‑like trips (similar distance and duration), the presence of tolls, congestion surcharges, or an airport fee aligns with higher tips, with the strongest lift typically on tolled routes. These markers capture trip context (airport runs, heavy traffic, express routes) that riders seem to value.
+
+Taken together, tipping reflects perceived time, context, and purpose of a ride. Longer or more involved trips, airport connections, tolled routes, and off‑peak/weekend travel align with more generous tipping. This suggests practical guidance for drivers (airport windows, early‑morning/weekend demand, routes likely to include express/tolled segments) and for operators (surfacing guidance, setting expectations in‑app, and aligning incentives where tipping potential is structurally higher).
+
+## Outputs
+
+- Figures: `docs/figures/*.png` (e.g., `rq1_heatmap_tip_percent.png`, `rq2_hour_tip_pct.png`, `rq3_withinbin_deltas.png`).
+- Tables: `docs/tables/*.csv` for RQ aggregations (bins, temporal splits, within‑bin deltas).
+- Report blocks (markdown): `docs/report_blocks/` → `rq1_summary.md`, `rq2_summary.md`, `rq3_summary.md`, `executive_summary.md`.
+
+## Version control workflow
+
+- Work on `dev` branch; merge to `main` via PR.  
+- This README reflects the finalized analysis (Notebook 04 completed and exports in place).

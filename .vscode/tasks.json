@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "commitMessage",
+      "type": "promptString",
+      "description": "Commit message for auto-push",
+      "default": "docs: finalize README and narrative summary"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "auto-push:dev (prompt message)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/scripts/auto-push.ps1",
+        "-Message", "${input:commitMessage}"
+      ],
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "auto-push:dev (default message)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/scripts/auto-push.ps1"
+      ],
+      "problemMatcher": [],
+      "group": "none"
+    }
+  ]
+}
