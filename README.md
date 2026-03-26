@@ -1,4 +1,4 @@
-﻿# CA1 – NY Tips vs Trips
+ DA-NY Tips vs Trips
 
 Data Analytics CA1 project (NYC Yellow Taxi 2024 × NOAA Weather 2024)  
 Author: **Juraj Madzunkov**  
